@@ -276,6 +276,7 @@ button:disabled { cursor: not-allowed; }
 
 /* ---------- seats ---------- */
 .seats {
+  --ch: calc(var(--cw) * 1.42);
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; flex-wrap: nowrap; justify-content: center; align-items: flex-end;
   gap: 18px 26px; padding: 0 18px 22px; transform-origin: 50% 100%;
 }
@@ -361,7 +362,7 @@ button:disabled { cursor: not-allowed; }
     repeating-linear-gradient(-45deg, rgba(227, 194, 122, 0.17) 0 1.5px, transparent 1.5px 6px),
     linear-gradient(160deg, #8e2b24, #5b1611);
 }
-.card { position: relative; flex: none; width: var(--cw); height: var(--ch); perspective: 900px; }
+.card { position: relative; flex: none; width: var(--cw); height: calc(var(--cw) * 1.42); perspective: 900px; }
 .cards .card + .card { margin-left: calc(var(--cw) * -0.56); }
 .dealer-cards .card + .card { margin-left: calc(var(--cw) * -0.3); }
 .card .fly { position: absolute; inset: 0; will-change: transform; }

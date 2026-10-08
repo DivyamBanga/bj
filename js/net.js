@@ -4,6 +4,7 @@
 // from the last broadcast state, so the room survives refreshes and departures.
 
 import { HostGame } from './host.js';
+import { every } from './timers.js';
 
 const PREFIX = 'tengrand-bj-v1-';
 const HEARTBEAT = 2500;
@@ -137,7 +138,7 @@ export class Room {
     if (this.closed) return;
     this.closed = true;
     this.flushSave();
-    clearInterval(this.hbTimer);
+    if (this.hbTimer) this.hbTimer.cancel();
     if (this.game) this.game.destroy();
     if (this.conns) for (const c of this.conns.keys()) { try { c.close(); } catch {} }
     try { if (this.conn) this.conn.close(); } catch {}
@@ -199,15 +200,15 @@ export class Room {
     });
     peer.on('close', () => { if (!this.closed && this.peer === peer) this.demote(); });
     peer.on('error', (e) => console.warn('[host]', e.type, e.message));
-    clearInterval(this.hbTimer);
-    this.hbTimer = setInterval(() => this.hostBeat(), HEARTBEAT);
+    if (this.hbTimer) this.hbTimer.cancel();
+    this.hbTimer = every(() => this.hostBeat(), HEARTBEAT);
     this.game.join(this.me.id, this.me.name, this.me.avatar);
     this.onStatus({ state: 'online', role: 'host', code: this.code });
   }
 
   // Our peer id was lost (e.g. another tab claimed it while we were offline): fall back to client.
   demote() {
-    clearInterval(this.hbTimer);
+    if (this.hbTimer) this.hbTimer.cancel();
     if (this.game) this.game.destroy();
     this.game = null;
     if (this.conns) for (const c of this.conns.keys()) { try { c.close(); } catch {} }
@@ -289,8 +290,8 @@ export class Room {
     conn.on('close', () => { if (conn === this.conn) this.lost(); });
     conn.on('error', () => { if (conn === this.conn) this.lost(); });
     send(conn, { t: 'hello', pid: this.me.id, name: this.me.name, avatar: this.me.avatar });
-    clearInterval(this.hbTimer);
-    this.hbTimer = setInterval(() => {
+    if (this.hbTimer) this.hbTimer.cancel();
+    this.hbTimer = every(() => {
       if (this.conn !== conn) return;
       if (Date.now() - this.lastHeard > HOST_SILENCE) { this.lost(); return; }
       send(conn, { t: 'hb' });
@@ -309,7 +310,7 @@ export class Room {
   async lost() {
     if (this.closed || this.role !== 'client') return;
     this.role = null;
-    clearInterval(this.hbTimer);
+    if (this.hbTimer) this.hbTimer.cancel();
     const c = this.conn;
     this.conn = null;
     try { c.close(); } catch {}

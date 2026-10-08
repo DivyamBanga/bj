@@ -5,6 +5,7 @@ import {
   RULES, buildShoe, handValue, isBlackjack, cardValue, rankOf,
   canSplit, canDouble, settleHand, dealerShouldHit,
 } from './engine.js';
+import { later } from './timers.js';
 
 export const TIMING = {
   deal: 430,
@@ -127,7 +128,7 @@ export class HostGame {
 
   wait(ms) {
     const g = this.gen;
-    return new Promise((r) => setTimeout(r, ms)).then(() => {
+    return new Promise((r) => later(r, ms)).then(() => {
       if (g !== this.gen || this.destroyed) throw CANCEL;
     });
   }
@@ -139,14 +140,14 @@ export class HostGame {
   setTimer(ms, fn) {
     this.clearTimer();
     const g = this.gen;
-    this.timer = setTimeout(() => {
+    this.timer = later(() => {
       this.timer = null;
       if (g === this.gen && !this.destroyed) fn();
     }, ms);
   }
 
   clearTimer() {
-    if (this.timer) clearTimeout(this.timer);
+    if (this.timer) this.timer.cancel();
     this.timer = null;
   }
 
@@ -224,7 +225,7 @@ export class HostGame {
   graceStand(pid) {
     const g = this.gen;
     const round = this.s.round;
-    setTimeout(() => {
+    later(() => {
       const p = this.P(pid);
       if (g !== this.gen || this.destroyed || this.s.round !== round || this.s.phase !== 'playing') return;
       if (!p || p.connected) return;
