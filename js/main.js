@@ -1,6 +1,7 @@
 // App shell: lobby, identity, room lifecycle, top-bar controls.
 
 import { Room, makeCode, cleanCode } from './net.js';
+import { HostGame } from './host.js';
 import { Table, esc } from './table.js';
 import { unlockAudio, sfx, isMuted, setMuted } from './audio.js';
 
@@ -149,11 +150,13 @@ async function enterRoom(mode, code, name) {
   table.reset();
   table.attach({ meId: pid, act: (a, extra) => room && room.act(a, extra), toast });
   let shown = false;
-  const knownRoom = !!store.get('tg_room_' + code);
   lastRole = null;
   wasReconnecting = false;
   const r = new Room({
     code, me,
+    game: 'bj',
+    makeHost: ({ code: c, hostPid, snapshot, emit, fx }) => new HostGame({ code: c, hostPid, snapshot, onState: emit, onFx: fx }),
+    successors: (st) => st.order.filter((id) => st.players[id] && st.players[id].connected),
     onState: (s) => {
       if (r !== room) return;
       if (!shown) {
@@ -167,7 +170,7 @@ async function enterRoom(mode, code, name) {
     onFx: (fx) => { if (r === room) table.fx(fx); },
     onStatus: (st) => {
       if (r !== room) return;
-      if (!shown && mode === 'join' && !knownRoom && st.state === 'online' && st.role === 'host') {
+      if (!shown && mode === 'join' && st.fresh) {
         toast(`Nobody was in room ${st.code} — you're hosting it. Share the invite link!`, 'host');
       }
       onStatus(st, shown);
@@ -193,9 +196,7 @@ async function enterRoom(mode, code, name) {
 }
 
 function friendlyError(e) {
-  const t = e && e.type;
-  if (t === 'browser-incompatible') return 'This browser does not support WebRTC. Try Chrome, Safari or Firefox.';
-  if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'timeout') return 'Could not reach the matchmaking server. Check your connection and try again.';
+  if (!globalThis.crypto || !globalThis.crypto.subtle) return 'This page needs a secure (https) connection.';
   return (e && e.message) || 'Something went wrong. Try again.';
 }
 
@@ -316,7 +317,7 @@ addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 if (!nameInput.value) nameInput.value = store.get('tg_name') || '';
 buildAvatars();
 renderInvite();
-if (!window.Peer) {
+if (!window.mqtt) {
   showLobby('Could not load the networking library. Check your connection and refresh.');
 } else if (inviteCode && nameInput.value) {
   // Returning player with a room link (or a refresh): drop straight back in.

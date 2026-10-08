@@ -145,7 +145,7 @@ async function simulate({ players = 4, rounds = 400, seed = 1 }) {
     } else if (s.phase === 'gameover') {
       gameovers++;
       assert.ok(s.winner && s.players[s.winner.id].bank >= RULES.goal);
-      g.action('p1', { a: 'newMatch' });
+      g.action(ids[0], { a: 'newMatch' });
       assert.equal(g.s.phase, 'betting');
       assert.ok(Object.values(g.s.players).every((p) => p.bank === RULES.startBank));
     }
